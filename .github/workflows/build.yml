@@ -1,6 +1,8 @@
 name: Flutter APK Build
 
 on:
+  push:
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
@@ -8,20 +10,48 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      # 1. Checkout code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
+      # 2. Setup Java (required for Android build)
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # 3. Setup Flutter SDK (IMPORTANT FIX)
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'
+          flutter-version: "3.41.7"
+          channel: stable
+          cache: true
 
-      - run: flutter pub get
+      # 4. Verify Flutter setup
+      - name: Flutter Doctor
+        run: flutter doctor -v
 
-      - run: flutter clean
+      # 5. Fix missing engine artifacts (THIS FIXES gen_snapshot ERROR)
+      - name: Precache Flutter Dependencies
+        run: flutter precache --android
 
-      - run: flutter build apk --release
+      # 6. Get dependencies
+      - name: Install Dependencies
+        run: flutter pub get
 
-      - uses: actions/upload-artifact@v4
+      # 7. Clean old builds (prevents Gradle issues)
+      - name: Clean Build
+        run: flutter clean
+
+      # 8. Build Release APK
+      - name: Build APK (Release)
+        run: flutter build apk --release
+
+      # 9. Upload APK file
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: app-release
+          name: release-apk
           path: build/app/outputs/flutter-apk/app-release.apk

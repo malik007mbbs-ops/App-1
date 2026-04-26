@@ -1,44 +1,63 @@
-name: Build APK
+name: Flutter APK Build (Stable Fix)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      # 1. Get code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Java
+      # 2. Show files (DEBUG STEP - VERY IMPORTANT)
+      - name: Debug project structure
+        run: ls -R
+
+      # 3. Setup Java
+      - name: Java Setup
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      - name: Setup Flutter
+      # 4. Setup Flutter
+      - name: Flutter Setup
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "stable"
 
-      - name: Verify files
-        run: ls -la
+      # 5. Fix Flutter engine (THIS FIXES gen_snapshot ERROR)
+      - name: Flutter Precaching
+        run: flutter precache --android
 
-      - name: Flutter Doctor
+      # 6. Confirm Flutter is OK
+      - name: Doctor Check
         run: flutter doctor -v
 
-      - name: Get dependencies
-        run: |
-          ls
-          flutter pub get
+      # 7. Find project location (IMPORTANT FIX)
+      - name: Locate project
+        run: find . -name pubspec.yaml
 
+      # 8. Go to correct folder automatically (FIXES YOUR ERROR)
+      - name: Set project directory
+        run: cd $(dirname $(find . -name pubspec.yaml | head -n 1)) && pwd
+
+      # 9. Install dependencies (FIXED)
+      - name: Install dependencies
+        run: flutter pub get
+
+      # 10. Build APK
       - name: Build APK
         run: flutter build apk --release
 
+      # 11. Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: apk
+          name: app-release
           path: build/app/outputs/flutter-apk/app-release.apk
